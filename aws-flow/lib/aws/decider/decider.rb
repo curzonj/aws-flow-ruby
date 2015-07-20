@@ -332,9 +332,11 @@ module AWS
       # Convenience method to set the child workflow client
       def child_workflow_client(name, &block)
         client_name = "@child_client_#{name}"
+
         define_method(name) do
           return instance_variable_get(client_name) if instance_variable_get(client_name)
-          client = AWS::Flow.send(:workflow_client, nil, nil, &block)
+          instance_variable_set(client_name, AWS::Flow.workflow_client(nil, nil, &block))
+          instance_variable_get(client_name)
         end
         instance_variable_get(client_name)
       end

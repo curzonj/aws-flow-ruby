@@ -98,6 +98,7 @@ module AWS
           @logger.error "Error in the poller, #{e.inspect}"
         rescue Exception => e
           @logger.error "Error in the poller, #{e.inspect}"
+          @logger.debug "Error backtrace, #{e.inspect} #{e.backtrace}"
         end
       end
     end
@@ -370,7 +371,8 @@ module AWS
             @logger.info Utilities.activity_task_to_debug_string("Got activity task", task)
           end
         rescue Exception => e
-          @logger.error "Error in the poller, #{e.inspect}"
+          @logger.error "Error in the poller, #{e.inspect} #{e.backtrace}"
+          @logger.debug "Error backtrace, #{e.inspect}"
           @poll_semaphore.release
           return false
         end
