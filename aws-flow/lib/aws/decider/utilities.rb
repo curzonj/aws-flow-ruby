@@ -121,6 +121,12 @@ module AWS
       # fit them into responses to the SWF service.
       # @api private
       def self.check_and_truncate_exception error, converter
+        # AWS Flow creates huge backtraces that while they
+        # may not overflow at first, they get duplicated in
+        # the output and then wrapped over and over again,
+        # and then they overflow. Log the execption if you
+        # need more details
+        error.backtrace.slice!(10, 100000)
 
         # serialize the exception so that we can check the actual size of the
         # payload.
