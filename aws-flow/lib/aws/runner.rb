@@ -106,7 +106,7 @@ module AWS
       def self.spawn_and_start_workers(json_fragment, process_name, worker)
         workers = []
         num_of_workers = json_fragment['number_of_workers'] || FlowConstants::NUM_OF_WORKERS_DEFAULT
-        should_register = true
+        should_register = json_fragment.fetch("register_types", true)
         num_of_workers.times do
           workers << fork do
             set_process_name(process_name)
@@ -409,6 +409,46 @@ module AWS
         # Hang there until killed: this process is used to relay signals to
         # children to support and facilitate an orderly shutdown.
         wait_for_child_processes(workers)
+      end
+
+      def self.register_activities(swf, domain, w)
+        task_list = expand_task_list(w['task_list']) if w['task_list']
+
+        # Get activity classes
+        classes = get_classes(w, {config_key: 'activity_classes',
+                                  clazz: AWS::Flow::Activities})
+
+        # If task_list is not provided, use the name of the first class as the
+        # task_list for this worker
+        task_list ||= "#{classes.first}"
+
+        # Create a worker
+        worker = ActivityWorker.new(swf.client, domain, task_list)
+        classes.each do |c|
+          c = AWS::Flow::Templates.make_activity_class(c) unless c.is_a?(AWS::Flow::Activities)
+          worker.add_implementation(c)
+        end
+
+        worker.register
+      end
+
+      def self.register_workflows(swf, domain, w)
+        task_list = expand_task_list(w['task_list'])
+
+        classes = get_classes(w, {config_key: 'workflow_classes',
+                                  clazz: AWS::Flow::Workflows})
+
+        # Create a worker
+        worker = WorkflowWorker.new(swf.client, domain, task_list, *classes)
+        worker.register
+      end
+
+      def self.register(json_config)
+        swf = create_service_client(json_config)
+        domain = setup_domain(json_config) if domain.nil?
+
+        register_activities(swf, domain, json_config['activity_workers'])
+        register_workflows(swf, domain, json_config['workflow_workers'])
       end
 
       #
